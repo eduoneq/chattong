@@ -1,0 +1,15 @@
+{
+  "name": "chattong-mcp",
+  "version": "0.0.0",
+  "description": "챗통(chattong) 읽기 전용 메신저 MCP — 배포 전 자리 패키지(기능 없음)",
+  "keywords": ["mcp", "chattong", "readonly", "messenger"],
+  "homepage": "https://chattong.dev",
+  "repository": { "type": "git", "url": "git+https://github.com/eduoneq/chattong.git", "directory": "packages/mcp" },
+  "bugs": { "url": "https://github.com/eduoneq/chattong/issues" },
+  "license": "MIT",
+  "author": "EDUONEQ Corp.",
+  "type": "module",
+  "bin": { "chattong-mcp": "bin/chattong-mcp.js" },
+  "files": ["bin", "README.md", "LICENSE", "DISCLAIMER.md"],
+  "engines": { "node": ">=22" }
+}
