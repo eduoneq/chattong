@@ -1,11 +1,11 @@
 # 제3자 고지 (Third-Party Notices)
 
-챗통은 아래 오픈소스를 참고하거나 일부를 옮겨 씁니다. 각 저작권 고지와 라이선스 전문을 그대로 싣습니다.
+외부 카카오톡 CLI의 출처와 챗통에 포함되는 범위를 안내합니다.
 
 ## kakaocli
 
 - 저장소: https://github.com/silver-flight-group/kakaocli
-- 사용 범위: 카카오톡 Mac 로컬 데이터의 키 계산 방식(KeyDerivation)을 참고해 Node로 옮겨 씁니다. 메시지 보내기, 로그인, 화면 자동화 코드는 가져오지 않습니다.
+- 사용 범위: 챗통 0.1.0의 TXT 파일 읽기 기능은 kakaocli의 키 계산 코드나 실행 파일을 사용하지 않습니다.
 - 라이선스: MIT
 
 ```
@@ -31,3 +31,7 @@ LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
 OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
 SOFTWARE.
 ```
+
+## kakaocli-win
+
+Windows 외부 프로젝트입니다. 챗통 0.1.0은 이 프로젝트의 코드나 실행 파일을 포함하지 않습니다. [원본 저장소](https://github.com/Lee-SiHyeon/kakaocli-win)
