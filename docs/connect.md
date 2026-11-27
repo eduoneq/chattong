@@ -7,7 +7,7 @@ macOS와 Windows에서 Node.js 22 이상을 설치하고 본인 계정의 카카
 로컬 stdio 서버의 이름을 `chattong`, 명령을 `npx`로 설정하고 다음 인자를 전달하세요.
 
 ```json
-["-y", "https://github.com/eduoneq/chattong/releases/download/v0.2.0/chattong-mcp-0.2.0.tgz"]
+["-y", "https://github.com/eduoneq/chattong/releases/download/v0.2.0/chattong-mcp-0.2.0.tgz?download=1"]
 ```
 
 소스에서 실행하려면 `packages/mcp`에서 `npm ci`를 실행하고 호스트에 stdio 서버 `chattong`을 등록합니다. 실행 명령은 `node`, 인자는 `packages/mcp/bin/chattong-mcp.js`의 절대 경로 하나입니다.
@@ -25,7 +25,7 @@ macOS와 Windows에서 Node.js 22 이상을 설치하고 본인 계정의 카카
   "mcpServers": {
     "chattong": {
       "command": "npx",
-      "args": ["-y", "https://github.com/eduoneq/chattong/releases/download/v0.2.0/chattong-mcp-0.2.0.tgz", "--file", "/Users/me/Documents/카카오톡 대화.txt"]
+      "args": ["-y", "https://github.com/eduoneq/chattong/releases/download/v0.2.0/chattong-mcp-0.2.0.tgz?download=1", "--file", "/Users/me/Documents/카카오톡 대화.txt"]
     }
   }
 }
