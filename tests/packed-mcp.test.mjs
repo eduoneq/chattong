@@ -47,8 +47,9 @@ async function installPackedPackage(root) {
   return {
     cwd,
     version: manifest.version,
-    // 테스트가 제공하는 설치본과 합성 파일만 읽을 수 있게 하고 파일 쓰기는 허용하지 않는다.
-    nodeArgs: ['--permission', `--allow-fs-read=${root}`, resolve(directory, manifest.bin[packageName])],
+    // 테스트가 제공하는 설치본과 합성 파일만 읽을 수 있게 한다.
+    permissions: ['--permission', `--allow-fs-read=${root}`],
+    entrypoint: resolve(directory, manifest.bin[packageName]),
   };
 }
 
@@ -63,9 +64,12 @@ async function withinDeadline(operation, action) {
   }
 }
 
-async function withServer(installation, args, exercise) {
-  const child = spawn(process.execPath, [...installation.nodeArgs, ...args], {
+async function withServer(installation, { documentsRoot, allowFolderCreation = false, args = [] }, exercise) {
+  const permissions = [...installation.permissions];
+  if (allowFolderCreation) permissions.push(`--allow-fs-write=${documentsRoot}`);
+  const child = spawn(process.execPath, [...permissions, installation.entrypoint, ...args], {
     cwd: installation.cwd,
+    env: { ...process.env, CHATTONG_DOCUMENTS_DIR: documentsRoot },
     stdio: ['pipe', 'pipe', 'pipe'],
     windowsHide: true,
   });
@@ -174,27 +178,97 @@ test('격리된 설치 디렉터리의 npm 패키지로 stdio MCP를 검증한�
   const root = await realpath(temporary);
   const installation = await installPackedPackage(root);
 
-  await t.test('파일 없이 연결하면 읽기 전용 도구와 설정 안내를 반환한다', async () => {
-    await withServer(installation, [], async request => {
+  await t.test('기본 폴더를 만들고 설정 화면과 최신 대화 목록을 제공한다', async () => {
+    const documentsRoot = join(root, '합성 문서 & 테스트');
+    const folder = join(documentsRoot, 'chattong', 'kakaotalk');
+    await mkdir(documentsRoot);
+
+    await withServer(installation, { documentsRoot, allowFolderCreation: true }, async request => {
       const { tools } = (await request('tools/list', {})).result;
       assert.deepEqual(tools.map(tool => tool.name).sort(), ['list_chats', 'read_messages', 'search_messages']);
       for (const tool of tools) assert.equal(tool.annotations?.readOnlyHint, true, tool.name);
-      assert.deepEqual(tools.find(tool => tool.name === 'search_messages').inputSchema.required, ['query']);
+      const listTool = tools.find(tool => tool.name === 'list_chats');
+      const readTool = tools.find(tool => tool.name === 'read_messages');
+      const searchTool = tools.find(tool => tool.name === 'search_messages');
+      assert.equal(readTool.inputSchema.properties.chatId.type, 'string');
+      assert.equal(searchTool.inputSchema.properties.chatId.type, 'string');
+      assert.deepEqual(searchTool.inputSchema.required, ['query']);
 
       const status = await callTool(request, 'list_chats');
       assert.deepEqual(status.chats, []);
-      assert.match(status.setup, /--file/);
+      assert.ok(status.setup.includes(folder));
+      assert.ok((await stat(folder)).isDirectory());
       assert.deepEqual((await callTool(request, 'read_messages')).messages, []);
       assert.deepEqual((await callTool(request, 'search_messages', { query: '합성' })).messages, []);
+
+      const uri = listTool._meta?.ui?.resourceUri;
+      assert.match(uri, /^ui:\/\//);
+      const { resources } = (await request('resources/list', {})).result;
+      assert.ok(resources.some(resource => resource.uri === uri));
+      const resource = await request('resources/read', { uri });
+      assert.ok(!resource.error, '설정 화면을 읽지 못했습니다.');
+      const [html] = resource.result.contents;
+      assert.equal(html.uri, uri);
+      assert.match(html.mimeType, /^text\/html;\s*profile=mcp-app$/);
+      assert.match(html.text, /<(?:!doctype html|html\b)/i);
+      assert.ok(html.text.includes(folder.replaceAll('&', '&amp;')), '설정 화면에 실제 폴더 경로가 없습니다.');
+
+      const firstFile = join(folder, '합성 첫 대화.txt');
+      const secondFile = join(folder, '합성 둘째 대화.TXT');
+      await writeFile(firstFile, exports[0].bytes);
+      await writeFile(join(folder, 'TXT가 아닌 합성 파일.md'), exports[0].bytes);
+
+      const initial = await callTool(request, 'list_chats');
+      assert.equal(initial.chats.length, 1);
+      const [firstChat] = initial.chats;
+      assert.equal(firstChat.messageCount, messages.length);
+      assert.equal(typeof firstChat.id, 'string');
+      assert.ok(firstChat.id.length > 0);
+
+      const secondMessage = { ...messages[0], text: '두 번째 대화의 FixtureNeedle' };
+      await writeFile(secondFile, [
+        '합성 둘째 대화방 님과 카카오톡 대화',
+        '--------------- 2026년 11월 27일 금요일 ---------------',
+        `[${secondMessage.sender}] [오전 9:01] ${secondMessage.text}`,
+      ].join('\n'));
+
+      const refreshed = await callTool(request, 'list_chats');
+      assert.equal(refreshed.chats.length, 2);
+      assert.ok(refreshed.setup.includes(folder));
+      const secondChat = refreshed.chats.find(chat => chat.messageCount === 1);
+      assert.equal(typeof secondChat?.id, 'string');
+      assert.ok(secondChat.id.length > 0);
+      assert.notEqual(secondChat.id, firstChat.id);
+      assert.equal(refreshed.chats.find(chat => chat.id === firstChat.id)?.messageCount, messages.length);
+
+      assert.deepEqual(await callTool(request, 'read_messages', { chatId: firstChat.id }), {
+        messages, nextOffset: null,
+      });
+      assert.deepEqual(await callTool(request, 'search_messages', { chatId: secondChat.id, query: 'FIXTURENEEDLE' }), {
+        messages: [secondMessage], nextOffset: null,
+      });
+
+      await writeFile(secondFile, exports[1].bytes);
+      await rm(firstFile);
+      const remaining = await callTool(request, 'list_chats');
+      assert.deepEqual(remaining.chats.map(({ id, messageCount }) => ({ id, messageCount })), [
+        { id: secondChat.id, messageCount: messages.length },
+      ]);
+      assert.deepEqual(await callTool(request, 'read_messages', { chatId: secondChat.id }), {
+        messages, nextOffset: null,
+      });
     });
   });
 
+  const blockedDocuments = join(root, '기본 폴더 생성이 막힌 문서');
+  await mkdir(blockedDocuments);
+  await writeFile(join(blockedDocuments, 'chattong'), '합성 일반 파일');
   for (const [index, fixture] of exports.entries()) {
-    await t.test(`${fixture.name}에서 상태, 본문, 검색을 반환하고 파일을 보존한다`, async () => {
+    await t.test(`기본 폴더를 만들 수 없어도 --file의 ${fixture.name} 대화를 읽고 원본을 보존한다`, async () => {
       const file = join(root, `합성 대화 내보내기 ${index}.txt`);
       await writeFile(file, fixture.bytes, { mode: 0o444 });
       const before = await stat(file, { bigint: true });
-      const output = await withServer(installation, ['--file', file], async request => {
+      const output = await withServer(installation, { documentsRoot: blockedDocuments, args: ['--file', file] }, async request => {
         const status = await callTool(request, 'list_chats');
         assert.deepEqual(status.chats, [{ id: 'export', messageCount: messages.length }]);
         assert.equal(status.setup, undefined);
@@ -227,8 +301,9 @@ test('격리된 설치 디렉터리의 npm 패키지로 stdio MCP를 검증한�
     const file = join(root, '합성 synthetic-private-location-c911.txt');
     const privateText = 'synthetic-private-content-e013';
     await writeFile(file, Buffer.concat([Buffer.from(privateText), Buffer.from([0xff])]));
-    const invalid = spawnSync(process.execPath, [...installation.nodeArgs, '--file', file], {
+    const invalid = spawnSync(process.execPath, [...installation.permissions, installation.entrypoint, '--file', file], {
       cwd: installation.cwd,
+      env: { ...process.env, CHATTONG_DOCUMENTS_DIR: blockedDocuments },
       encoding: 'utf8',
       timeout: 10_000,
       windowsHide: true,

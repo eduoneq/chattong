@@ -1,7 +1,7 @@
 {
   "name": "chattong-mcp",
-  "version": "0.1.0",
-  "description": "macOS와 Windows에서 직접 내보낸 대화 TXT 한 개를 읽는 로컬 stdio MCP",
+  "version": "0.2.0",
+  "description": "문서 폴더의 카카오톡 대화 TXT를 읽고 검색하는 로컬 stdio MCP",
   "keywords": [
     "mcp",
     "chattong",

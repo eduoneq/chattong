@@ -5,7 +5,9 @@
 import { readdirSync, readFileSync, statSync, existsSync } from 'node:fs';
 import { join, relative, extname } from 'node:path';
 
-const ROOT = new URL('..', import.meta.url).pathname;
+import { fileURLToPath } from 'node:url';
+
+const ROOT = fileURLToPath(new URL('..', import.meta.url));
 const targets = (process.argv.slice(2).length ? process.argv.slice(2) : ['packages']).map((p) => join(ROOT, p));
 const EXT = new Set(['.js', '.mjs', '.cjs', '.ts', '.mts', '.cts', '.tsx', '.jsx']);
 const SKIP_DIR = new Set(['node_modules', 'dist', 'build', '.git', 'test', 'tests', '__tests__', 'fixtures']);
