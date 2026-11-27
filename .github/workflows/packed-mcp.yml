@@ -14,7 +14,8 @@ jobs:
       fail-fast: false
       matrix:
         os: [macos-latest, windows-latest]
-        node: ['22', 'current']
+        # current 별칭은 알파도 선택하므로 최신 정식 배포판을 지정한다.
+        node: ['22', '26.13.1']
     runs-on: ${{ matrix.os }}
     timeout-minutes: 10
     steps:

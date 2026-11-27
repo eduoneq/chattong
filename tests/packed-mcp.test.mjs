@@ -1,6 +1,6 @@
 import assert from 'node:assert/strict';
 import { execFileSync, spawn, spawnSync } from 'node:child_process';
-import { access, mkdir, mkdtemp, readFile, realpath, rm, stat, writeFile } from 'node:fs/promises';
+import { access, mkdir, mkdtemp, readFile, readdir, realpath, rm, stat, writeFile } from 'node:fs/promises';
 import { tmpdir } from 'node:os';
 import { basename, dirname, join, resolve } from 'node:path';
 import { createInterface } from 'node:readline';
@@ -29,17 +29,20 @@ function npm(args, cwd, root) {
 }
 
 async function installPackedPackage(root) {
-  const [archive] = JSON.parse(npm(['pack', '--json', '--ignore-scripts', '--pack-destination', root], source, root));
-  assert.equal(archive.name, packageName);
+  npm(['pack', '--loglevel=error', '--ignore-scripts', '--pack-destination', root], source, root);
+  const archives = (await readdir(root)).filter(filename => filename.endsWith('.tgz'));
+  assert.equal(archives.length, 1);
+  const [archive] = archives;
 
   const cwd = join(root, 'isolated install');
   await mkdir(cwd);
   await writeFile(join(cwd, 'package.json'), JSON.stringify({ private: true }));
-  npm(['install', '--ignore-scripts', '--no-audit', '--no-fund', join(root, archive.filename)], cwd, root);
+  npm(['install', '--ignore-scripts', '--no-audit', '--no-fund', join(root, archive)], cwd, root);
 
   const directory = join(cwd, 'node_modules', packageName);
   const manifest = JSON.parse(await readFile(join(directory, 'package.json'), 'utf8'));
-  assert.equal(manifest.version, archive.version);
+  assert.equal(manifest.name, packageName);
+  assert.equal(archive, `${packageName}-${manifest.version}.tgz`);
   await access(join(cwd, 'node_modules', '.bin', windows ? `${packageName}.cmd` : packageName));
   return {
     cwd,
