@@ -1,0 +1,27 @@
+name: packed-mcp
+
+on:
+  pull_request:
+  push:
+    branches: [main]
+
+permissions:
+  contents: read
+
+jobs:
+  packed-mcp:
+    strategy:
+      fail-fast: false
+      matrix:
+        os: [macos-latest, windows-latest]
+        # current 별칭은 알파도 선택하므로 최신 정식 배포판을 지정한다.
+        node: ['22', '26.13.1']
+    runs-on: ${{ matrix.os }}
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: ${{ matrix.node }}
+      - name: npm 패키지 MCP 동작 검사
+        run: node --test tests/packed-mcp.test.mjs
