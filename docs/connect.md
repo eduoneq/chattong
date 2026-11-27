@@ -11,7 +11,7 @@ macOS와 Windows에서 Node.js 22 이상을 설치하고 본인 계정의 카카
   "mcpServers": {
     "chattong": {
       "command": "npx",
-      "args": ["-y", "chattong-mcp@0.1.0", "--file", "/Users/me/Documents/카카오톡 대화.txt"]
+      "args": ["-y", "https://github.com/eduoneq/chattong/releases/download/v0.1.0/chattong-mcp-0.1.0.tgz", "--file", "/Users/me/Documents/카카오톡 대화.txt"]
     }
   }
 }
